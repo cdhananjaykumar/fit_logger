@@ -34,13 +34,11 @@
                 Date: <span id="currentDate"></span>
             </div>
 
-            <div id="editingBanner" class="editingBanner hidden">
-                Editing a past entry
-                <button class="linkBtn" onclick="cancelEdit()">Cancel</button>
-            </div>
-
             <label>Weight (kg)</label>
             <input type="number" id="weightInput" step="0.1">
+
+            <label>Step Count</label>
+            <input type="number" id="stepsInput" step="1" min="0" placeholder="e.g. 8500">
 
             <h3>Food Intake</h3>
 
@@ -54,6 +52,8 @@
             <button id="saveEntryBtn" onclick="saveEntry()">Save Entry</button>
 
             <div id="statusMessage"></div>
+
+            <p class="lockNote">Today's entry can be updated anytime today. Once the date passes, it locks permanently.</p>
 
             <button class="secondaryBtn" onclick="showHistory()">View History</button>
 
@@ -76,6 +76,18 @@
             <div class="listHeader">
                 <h3>Past Entries</h3>
                 <button class="secondaryBtn small" onclick="exportCSV()">Export CSV</button>
+            </div>
+
+            <button class="secondaryBtn" onclick="toggleRemarkForm()">+ Add Remark for a Missed Day</button>
+
+            <div id="remarkForm" class="remarkForm hidden">
+                <label>Missed Date</label>
+                <input type="date" id="remarkDate">
+
+                <label>Remark</label>
+                <input type="text" id="remarkText" placeholder="e.g. Traveling, forgot to log">
+
+                <button onclick="saveRemark()">Save Remark</button>
             </div>
 
             <div id="entryList" class="entryList"></div>

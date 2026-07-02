@@ -6,18 +6,22 @@ A lightweight mobile-friendly health tracker web app built for daily fitness log
 
 - One-time user name setup
 - Daily weight tracking
+- Daily step count tracking (highlighted green at 10,000+ steps)
 - Food intake tracking with checkboxes:
   - Normal Food
   - Sugar Intake
   - Tea
   - Non Veg
 - Local browser storage (offline support)
-- One entry per day (auto overwrite for same date)
+- Data integrity by design:
+  - Today's entry can be edited freely, any number of times, until the day ends
+  - Once a date passes, that entry locks permanently — no editing or deleting
+  - Missed a day? Add a text remark against that past date instead (no data, just a note)
 - History screen with:
   - Weight trend line chart (Chart.js, bundled locally — works offline)
-  - Quick stats (weight change, % days with sugar/tea/non-veg)
-  - Full list of past entries with edit and delete
-  - CSV export of all entries
+  - Quick stats (weight change, % days with sugar/tea/non-veg, % days hitting 10k steps)
+  - Full list of past entries, showing locked/today/missed status
+  - CSV export of all entries (including step counts and remarks)
 - Mobile responsive design
 - Full Progressive Web App support:
   - Installable with app icons
@@ -60,9 +64,13 @@ git clone https://github.com/YOUR_USERNAME/GSY_FitLog.git
 
 3. Run with Live Server extension
 
+## Building an Android APK
+
+See [APK_BUILD.md](./APK_BUILD.md) for step-by-step instructions using PWABuilder — no local Android tooling required.
+
 ## Planned Features
 
-- APK build for Android
+(none currently — suggest more in the repo issues)
 
 ## License
 

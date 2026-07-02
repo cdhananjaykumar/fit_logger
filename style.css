@@ -183,7 +183,7 @@ button:active {
 
 .statsRow {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 10px;
     margin-bottom: 20px;
 }
@@ -266,35 +266,12 @@ button:active {
     padding: 20px 0;
 }
 
-.editingBanner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff8e1;
-    border: 1px solid #ffe082;
-    color: #8d6e00;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-}
-
-.linkBtn {
-    background: none;
-    border: none;
-    color: #8d6e00;
-    text-decoration: underline;
+.lockNote {
+    text-align: center;
+    color: #888;
     font-size: 12px;
-    font-weight: 600;
-    width: auto;
-    padding: 0;
-    margin: 0;
-}
-
-.linkBtn:hover {
-    background: none;
-    color: #5c4700;
+    margin-top: 12px;
+    line-height: 1.4;
 }
 
 .listHeader {
@@ -308,36 +285,78 @@ button:active {
     margin: 0;
 }
 
-.entryActions {
-    display: flex;
-    gap: 8px;
+.statusBadge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+.statusBadge.today {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.statusBadge.locked {
+    background: #f0f0f0;
+    color: #777;
+}
+
+.statusBadge.missed {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.entryStatus {
     margin-top: 8px;
 }
 
-.rowBtn {
-    width: auto;
-    padding: 5px 12px;
-    font-size: 12px;
-    border-radius: 6px;
-    margin: 0;
+.tag.steps-good {
+    background: #e8f5e9;
+    color: #1b5e20;
+    font-weight: 700;
 }
 
-.rowBtn.edit {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border: 1px solid #c8e6c9;
-}
-
-.rowBtn.edit:hover {
-    background-color: #d7ecd8;
-}
-
-.rowBtn.delete {
-    background-color: #fdecea;
+.tag.steps-low {
+    background: #fdecea;
     color: #c62828;
-    border: 1px solid #f5c6c2;
 }
 
-.rowBtn.delete:hover {
-    background-color: #fadbd8;
+.tag.steps-none {
+    background: #f0f0f0;
+    color: #999;
+}
+
+.remarkRow {
+    background: #fffdf5;
+    border-color: #ffe082;
+}
+
+.remarkText {
+    font-size: 13px;
+    color: #6d5300;
+    font-style: italic;
+}
+
+.remarkForm {
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.remarkForm input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 12px;
+    background: #fff;
+}
+
+.remarkForm button {
+    margin-top: 4px;
 }

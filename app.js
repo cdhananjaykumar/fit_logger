@@ -17,7 +17,9 @@ window.onload = function () {
 }
 
 
-let editingDate = null;
+function getToday(){
+    return new Date().toISOString().split("T")[0];
+}
 
 
 function saveName(){
@@ -46,6 +48,25 @@ function showDashboard(name){
         document.getElementById("userHeading").innerText =
             "Hello, " + name;
     }
+
+    loadTodayIntoForm();
+}
+
+
+function loadTodayIntoForm(){
+
+    const today = getToday();
+    const logs = JSON.parse(localStorage.getItem("fitlog_entries")) || [];
+    const entry = logs.find(item => item.date===today && !item.isRemark);
+
+    if(entry){
+        document.getElementById("weightInput").value = entry.weight || "";
+        document.getElementById("stepsInput").value = entry.steps || "";
+        document.getElementById("normal").checked = !!entry.normal;
+        document.getElementById("sugar").checked = !!entry.sugar;
+        document.getElementById("tea").checked = !!entry.tea;
+        document.getElementById("nonveg").checked = !!entry.nonveg;
+    }
 }
 
 
@@ -58,13 +79,14 @@ function saveEntry(){
         return;
     }
 
-    const today = new Date().toISOString().split("T")[0];
-    const targetDate = editingDate || today;
+    const today = getToday();
 
     const entry = {
 
-        date: targetDate,
+        date: today,
         weight: weight,
+        steps: document.getElementById("stepsInput").value || "",
+        isRemark: false,
 
         normal: document.getElementById("normal").checked,
         sugar: document.getElementById("sugar").checked,
@@ -78,7 +100,7 @@ function saveEntry(){
 
 
     const index =
-        logs.findIndex(item => item.date===targetDate);
+        logs.findIndex(item => item.date===today && !item.isRemark);
 
 
     if(index>=0){
@@ -97,31 +119,8 @@ function saveEntry(){
     );
 
 
-    const wasEditing = !!editingDate;
-
-    clearForm();
-    exitEditMode();
-
-    if(wasEditing){
-
-        showHistory();
-
-    }else{
-
-        document.getElementById("statusMessage").innerText =
-            "Saved Successfully";
-    }
-}
-
-
-function clearForm(){
-
-    document.getElementById("weightInput").value="";
-
-    document.getElementById("normal").checked=false;
-    document.getElementById("sugar").checked=false;
-    document.getElementById("tea").checked=false;
-    document.getElementById("nonveg").checked=false;
+    document.getElementById("statusMessage").innerText =
+        "Saved Successfully";
 }
 
 
@@ -132,6 +131,8 @@ function showHistory(){
 
     document.getElementById("dashboard").classList.add("hidden");
     document.getElementById("historyScreen").classList.remove("hidden");
+
+    document.getElementById("remarkForm").classList.add("hidden");
 
     renderHistory();
 }
@@ -160,8 +161,10 @@ function renderHistory(){
 
 function renderChart(logs){
 
-    const labels = logs.map(item => formatDisplayDate(item.date));
-    const weights = logs.map(item => parseFloat(item.weight));
+    const realLogs = logs.filter(item => !item.isRemark && item.weight);
+
+    const labels = realLogs.map(item => formatDisplayDate(item.date));
+    const weights = realLogs.map(item => parseFloat(item.weight));
 
     const ctx = document.getElementById("weightChart").getContext("2d");
 
@@ -201,24 +204,38 @@ function renderStats(logs){
 
     const statsRow = document.getElementById("statsRow");
 
-    if(logs.length===0){
+    const realLogs = logs.filter(item => !item.isRemark);
+
+    if(realLogs.length===0){
         statsRow.innerHTML = "";
         return;
     }
 
-    const total = logs.length;
+    const total = realLogs.length;
 
-    const sugarDays = logs.filter(item => item.sugar).length;
-    const teaDays = logs.filter(item => item.tea).length;
-    const nonvegDays = logs.filter(item => item.nonveg).length;
+    const sugarDays = realLogs.filter(item => item.sugar).length;
+    const teaDays = realLogs.filter(item => item.tea).length;
+    const nonvegDays = realLogs.filter(item => item.nonveg).length;
 
-    const firstWeight = parseFloat(logs[0].weight);
-    const lastWeight = parseFloat(logs[logs.length-1].weight);
-    const change = (lastWeight - firstWeight).toFixed(1);
-    const changeLabel = change > 0 ? "+" + change : change;
+    const weighedLogs = realLogs.filter(item => item.weight);
+    const firstWeight = weighedLogs.length ? parseFloat(weighedLogs[0].weight) : null;
+    const lastWeight = weighedLogs.length ? parseFloat(weighedLogs[weighedLogs.length-1].weight) : null;
+
+    let changeLabel = "--";
+    if(firstWeight!==null && lastWeight!==null){
+        const change = (lastWeight - firstWeight).toFixed(1);
+        changeLabel = (change > 0 ? "+" + change : change) + " kg";
+    }
+
+    const steppedLogs = realLogs.filter(item => item.steps);
+    const goalDays = steppedLogs.filter(item => parseInt(item.steps) >= 10000).length;
+    const stepGoalLabel = steppedLogs.length
+        ? percent(goalDays, steppedLogs.length) + "%"
+        : "--";
 
     statsRow.innerHTML =
-        "<div class='statBox'><span>" + changeLabel + " kg</span><small>Weight change</small></div>" +
+        "<div class='statBox'><span>" + changeLabel + "</span><small>Weight change</small></div>" +
+        "<div class='statBox'><span>" + stepGoalLabel + "</span><small>10k+ step days</small></div>" +
         "<div class='statBox'><span>" + percent(sugarDays,total) + "%</span><small>Sugar days</small></div>" +
         "<div class='statBox'><span>" + percent(teaDays,total) + "%</span><small>Tea days</small></div>" +
         "<div class='statBox'><span>" + percent(nonvegDays,total) + "%</span><small>Non Veg days</small></div>";
@@ -226,6 +243,8 @@ function renderStats(logs){
 
 
 function percent(count,total){
+
+    if(total===0) return 0;
 
     return Math.round((count/total)*100);
 }
@@ -240,34 +259,81 @@ function renderEntryList(logs){
         return;
     }
 
+    const today = getToday();
     const reversed = [...logs].reverse();
 
     entryList.innerHTML = reversed.map(item => {
 
-        const tags = [];
+        if(item.isRemark){
+            return renderRemarkRow(item);
+        }
 
-        if(item.normal) tags.push("Normal");
-        if(item.sugar) tags.push("Sugar");
-        if(item.tea) tags.push("Tea");
-        if(item.nonveg) tags.push("Non Veg");
-
-        const tagHtml = tags.length
-            ? tags.map(t => "<span class='tag'>" + t + "</span>").join("")
-            : "<span class='tag empty'>No food logged</span>";
-
-        return "<div class='entryRow'>" +
-            "<div class='entryTop'>" +
-                "<strong>" + formatDisplayDate(item.date) + "</strong>" +
-                "<span class='entryWeight'>" + item.weight + " kg</span>" +
-            "</div>" +
-            "<div class='entryTags'>" + tagHtml + "</div>" +
-            "<div class='entryActions'>" +
-                "<button class='rowBtn edit' onclick=\"editEntry('" + item.date + "')\">Edit</button>" +
-                "<button class='rowBtn delete' onclick=\"deleteEntry('" + item.date + "')\">Delete</button>" +
-            "</div>" +
-        "</div>";
+        return renderDataRow(item, item.date===today);
 
     }).join("");
+}
+
+
+function renderDataRow(item, isToday){
+
+    const tags = [];
+
+    if(item.normal) tags.push("Normal");
+    if(item.sugar) tags.push("Sugar");
+    if(item.tea) tags.push("Tea");
+    if(item.nonveg) tags.push("Non Veg");
+
+    const tagHtml = tags.length
+        ? tags.map(t => "<span class='tag'>" + t + "</span>").join("")
+        : "<span class='tag empty'>No food logged</span>";
+
+    const stepsHtml = renderStepsTag(item.steps);
+
+    const statusHtml = isToday
+        ? "<span class='statusBadge today'>Today &middot; editable</span>"
+        : "<span class='statusBadge locked'>&#128274; Locked</span>";
+
+    return "<div class='entryRow'>" +
+        "<div class='entryTop'>" +
+            "<strong>" + formatDisplayDate(item.date) + "</strong>" +
+            "<span class='entryWeight'>" + item.weight + " kg</span>" +
+        "</div>" +
+        "<div class='entryTags'>" + tagHtml + stepsHtml + "</div>" +
+        "<div class='entryStatus'>" + statusHtml + "</div>" +
+    "</div>";
+}
+
+
+function renderRemarkRow(item){
+
+    return "<div class='entryRow remarkRow'>" +
+        "<div class='entryTop'>" +
+            "<strong>" + formatDisplayDate(item.date) + "</strong>" +
+            "<span class='statusBadge missed'>Missed Day</span>" +
+        "</div>" +
+        "<div class='remarkText'>" + escapeHtml(item.remark) + "</div>" +
+    "</div>";
+}
+
+
+function renderStepsTag(steps){
+
+    if(!steps){
+        return "<span class='tag steps-none'>No steps logged</span>";
+    }
+
+    const value = parseInt(steps);
+    const cls = value >= 10000 ? "steps-good" : "steps-low";
+
+    return "<span class='tag " + cls + "'>" + value.toLocaleString() + " steps</span>";
+}
+
+
+function escapeHtml(str){
+
+    const div = document.createElement("div");
+    div.innerText = str || "";
+    return div.innerHTML;
 }
 
 
@@ -275,79 +341,75 @@ function formatDisplayDate(isoDate){
 
     const d = new Date(isoDate);
 
-    return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short" });
+    return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
 }
 
 
-function editEntry(date){
+function toggleRemarkForm(){
 
-    const logs = getSortedLogs();
-    const entry = logs.find(item => item.date===date);
+    const form = document.getElementById("remarkForm");
+    form.classList.toggle("hidden");
 
-    if(!entry){
+    if(!form.classList.contains("hidden")){
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate()-1);
+
+        document.getElementById("remarkDate").max = yesterday.toISOString().split("T")[0];
+        document.getElementById("remarkDate").value = "";
+        document.getElementById("remarkText").value = "";
+    }
+}
+
+
+function saveRemark(){
+
+    const date = document.getElementById("remarkDate").value;
+    const remark = document.getElementById("remarkText").value.trim();
+
+    const today = getToday();
+
+    if(!date){
+        alert("Pick the missed date");
         return;
     }
 
-    editingDate = date;
-
-    document.getElementById("weightInput").value = entry.weight;
-    document.getElementById("normal").checked = entry.normal;
-    document.getElementById("sugar").checked = entry.sugar;
-    document.getElementById("tea").checked = entry.tea;
-    document.getElementById("nonveg").checked = entry.nonveg;
-
-    document.getElementById("editingBanner").classList.remove("hidden");
-    document.getElementById("editingBanner").firstChild.textContent =
-        "Editing entry for " + formatDisplayDate(date) + " ";
-
-    document.getElementById("saveEntryBtn").innerText = "Update Entry";
-
-    document.getElementById("statusMessage").innerText = "";
-
-    showDashboard();
-}
-
-
-function cancelEdit(){
-
-    clearForm();
-    exitEditMode();
-}
-
-
-function exitEditMode(){
-
-    editingDate = null;
-
-    document.getElementById("editingBanner").classList.add("hidden");
-    document.getElementById("saveEntryBtn").innerText = "Save Entry";
-}
-
-
-function deleteEntry(date){
-
-    const confirmed = confirm(
-        "Delete the entry for " + formatDisplayDate(date) + "?"
-    );
-
-    if(!confirmed){
+    if(date>=today){
+        alert("You can only add a remark for a past date, not today or the future.");
         return;
     }
 
-    let logs =
-        JSON.parse(localStorage.getItem("fitlog_entries")) || [];
-
-    logs = logs.filter(item => item.date!==date);
-
-    localStorage.setItem(
-        "fitlog_entries",
-        JSON.stringify(logs)
-    );
-
-    if(editingDate===date){
-        clearForm();
-        exitEditMode();
+    if(remark==""){
+        alert("Enter a remark");
+        return;
     }
+
+    let logs = JSON.parse(localStorage.getItem("fitlog_entries")) || [];
+
+    const hasRealEntry = logs.some(item => item.date===date && !item.isRemark);
+
+    if(hasRealEntry){
+        alert("This date already has logged data and cannot be changed.");
+        return;
+    }
+
+    const existingRemarkIndex = logs.findIndex(item => item.date===date && item.isRemark);
+
+    const remarkEntry = {
+        date: date,
+        isRemark: true,
+        remark: remark
+    };
+
+    if(existingRemarkIndex>=0){
+        logs[existingRemarkIndex] = remarkEntry;
+    }else{
+        logs.push(remarkEntry);
+    }
+
+    localStorage.setItem("fitlog_entries", JSON.stringify(logs));
+
+    document.getElementById("remarkForm").classList.add("hidden");
 
     renderHistory();
 }
@@ -362,19 +424,30 @@ function exportCSV(){
         return;
     }
 
-    const header = ["Date","Weight(kg)","Normal","Sugar","Tea","NonVeg"];
+    const header = ["Date","Weight(kg)","Steps","Normal","Sugar","Tea","NonVeg","Remark"];
 
-    const rows = logs.map(item => [
-        item.date,
-        item.weight,
-        item.normal ? "Yes" : "No",
-        item.sugar ? "Yes" : "No",
-        item.tea ? "Yes" : "No",
-        item.nonveg ? "Yes" : "No"
-    ]);
+    const rows = logs.map(item => {
+
+        if(item.isRemark){
+            return [item.date, "", "", "", "", "", "", item.remark || ""];
+        }
+
+        return [
+            item.date,
+            item.weight || "",
+            item.steps || "",
+            item.normal ? "Yes" : "No",
+            item.sugar ? "Yes" : "No",
+            item.tea ? "Yes" : "No",
+            item.nonveg ? "Yes" : "No",
+            ""
+        ];
+    });
 
     const csvContent =
-        [header, ...rows].map(row => row.join(",")).join("\n");
+        [header, ...rows].map(row =>
+            row.map(cell => "\"" + String(cell).replace(/"/g,'""') + "\"").join(",")
+        ).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
