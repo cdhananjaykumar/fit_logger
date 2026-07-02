@@ -22,18 +22,102 @@ function getToday(){
 }
 
 
+function getHeight(){
+    return parseFloat(localStorage.getItem("fitlog_height_cm")) || null;
+}
+
+
 function saveName(){
 
     const name = document.getElementById("nameInput").value.trim();
+    const height = document.getElementById("heightInput").value;
 
     if(name==""){
         alert("Enter name");
         return;
     }
 
+    if(height=="" || parseFloat(height)<=0){
+        alert("Enter your height in cm");
+        return;
+    }
+
     localStorage.setItem("fitlog_user",name);
+    localStorage.setItem("fitlog_height_cm",height);
 
     showDashboard(name);
+}
+
+
+function editHeight(){
+
+    const current = getHeight();
+
+    const input = prompt("Enter your height in cm:", current || "");
+
+    if(input===null){
+        return;
+    }
+
+    const value = parseFloat(input);
+
+    if(!value || value<=0){
+        alert("Enter a valid height in cm");
+        return;
+    }
+
+    localStorage.setItem("fitlog_height_cm", value);
+
+    document.getElementById("heightDisplay").innerText = value;
+}
+
+
+// Standard adult BMI bands: <18.5 underweight, 18.5-24.9 normal, >=25 overweight/obese
+function getBmi(weightKg, heightCm){
+
+    if(!weightKg || !heightCm){
+        return null;
+    }
+
+    const heightM = heightCm/100;
+
+    return weightKg / (heightM*heightM);
+}
+
+
+function getBmiCategory(bmi){
+
+    if(bmi===null) return null;
+    if(bmi<18.5) return "under";
+    if(bmi<25) return "normal";
+    return "over";
+}
+
+
+function getBmiLabel(category){
+
+    if(category==="under") return "Underweight";
+    if(category==="normal") return "Normal";
+    if(category==="over") return "Overweight";
+
+    return "--";
+}
+
+
+const BMI_COLORS = {
+    under: "#42a5f5",
+    normal: "#43a047",
+    over: "#e53935"
+};
+
+
+function getWeightColor(weightKg){
+
+    const heightCm = getHeight();
+    const bmi = getBmi(weightKg, heightCm);
+    const category = getBmiCategory(bmi);
+
+    return BMI_COLORS[category] || "#43a047";
 }
 
 
@@ -48,6 +132,20 @@ function showDashboard(name){
         document.getElementById("userHeading").innerText =
             "Hello, " + name;
     }
+
+    let height = getHeight();
+
+    if(!height){
+        const input = prompt("One-time setup: enter your height in cm (used for BMI-based colour coding):");
+        const value = parseFloat(input);
+
+        if(value && value>0){
+            localStorage.setItem("fitlog_height_cm", value);
+            height = value;
+        }
+    }
+
+    document.getElementById("heightDisplay").innerText = height || "--";
 
     loadTodayIntoForm();
 }
@@ -166,6 +264,8 @@ function renderChart(logs){
     const labels = realLogs.map(item => formatDisplayDate(item.date));
     const weights = realLogs.map(item => parseFloat(item.weight));
 
+    const pointColors = weights.map(w => getWeightColor(w));
+
     const ctx = document.getElementById("weightChart").getContext("2d");
 
     if(weightChartInstance){
@@ -180,11 +280,18 @@ function renderChart(logs){
                 label: "Weight (kg)",
                 data: weights,
                 borderColor: "#43a047",
-                backgroundColor: "rgba(67, 160, 71, 0.15)",
+                backgroundColor: "rgba(67, 160, 71, 0.1)",
                 fill: true,
                 tension: 0.3,
-                pointBackgroundColor: "#43a047",
-                pointRadius: 4
+                pointBackgroundColor: pointColors,
+                pointBorderColor: pointColors,
+                pointRadius: 5,
+                segment: {
+                    borderColor: (segCtx) => {
+                        const endWeight = segCtx.p1.parsed.y;
+                        return getWeightColor(endWeight);
+                    }
+                }
             }]
         },
         options: {
@@ -233,8 +340,22 @@ function renderStats(logs){
         ? percent(goalDays, steppedLogs.length) + "%"
         : "--";
 
+    const heightCm = getHeight();
+    let bmiHtml = "<div class='statBox'><span>--</span><small>Current BMI</small></div>";
+
+    if(lastWeight!==null && heightCm){
+        const bmi = getBmi(lastWeight, heightCm);
+        const category = getBmiCategory(bmi);
+        bmiHtml =
+            "<div class='statBox bmiBox " + category + "'>" +
+                "<span>" + bmi.toFixed(1) + "</span>" +
+                "<small>" + getBmiLabel(category) + "</small>" +
+            "</div>";
+    }
+
     statsRow.innerHTML =
         "<div class='statBox'><span>" + changeLabel + "</span><small>Weight change</small></div>" +
+        bmiHtml +
         "<div class='statBox'><span>" + stepGoalLabel + "</span><small>10k+ step days</small></div>" +
         "<div class='statBox'><span>" + percent(sugarDays,total) + "%</span><small>Sugar days</small></div>" +
         "<div class='statBox'><span>" + percent(teaDays,total) + "%</span><small>Tea days</small></div>" +
@@ -293,10 +414,12 @@ function renderDataRow(item, isToday){
         ? "<span class='statusBadge today'>Today &middot; editable</span>"
         : "<span class='statusBadge locked'>&#128274; Locked</span>";
 
+    const weightColor = getWeightColor(parseFloat(item.weight));
+
     return "<div class='entryRow'>" +
         "<div class='entryTop'>" +
             "<strong>" + formatDisplayDate(item.date) + "</strong>" +
-            "<span class='entryWeight'>" + item.weight + " kg</span>" +
+            "<span class='entryWeight' style='color:" + weightColor + "'>" + item.weight + " kg</span>" +
         "</div>" +
         "<div class='entryTags'>" + tagHtml + stepsHtml + "</div>" +
         "<div class='entryStatus'>" + statusHtml + "</div>" +

@@ -360,3 +360,87 @@ button:active {
 .remarkForm button {
     margin-top: 4px;
 }
+
+.helperText {
+    text-align: left;
+    color: #888;
+    font-size: 11px;
+    margin-top: -10px;
+    margin-bottom: 16px;
+}
+
+.linkBtn {
+    width: auto;
+    display: inline;
+    background: none;
+    border: none;
+    color: #2e7d32;
+    text-decoration: underline;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0;
+    margin: 0;
+}
+
+.linkBtn:hover {
+    background: none;
+    color: #1b5e20;
+}
+
+.chartLegend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 11px;
+    color: #666;
+}
+
+.chartLegend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.dot.under {
+    background: #42a5f5;
+}
+
+.dot.normal {
+    background: #43a047;
+}
+
+.dot.over {
+    background: #e53935;
+}
+
+.bmiBox.under {
+    background: #e3f2fd;
+}
+
+.bmiBox.under span {
+    color: #1565c0;
+}
+
+.bmiBox.normal {
+    background: #e8f5e9;
+}
+
+.bmiBox.normal span {
+    color: #2e7d32;
+}
+
+.bmiBox.over {
+    background: #fdecea;
+}
+
+.bmiBox.over span {
+    color: #c62828;
+}

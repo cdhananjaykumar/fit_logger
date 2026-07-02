@@ -4,8 +4,12 @@ A lightweight mobile-friendly health tracker web app built for daily fitness log
 
 ## Features
 
-- One-time user name setup
-- Daily weight tracking
+- One-time user name and height setup (used to calculate BMI)
+- Daily weight tracking with automatic BMI-based colour coding:
+  - Green when your weight falls in a healthy BMI range for your height
+  - Red when overweight/obese
+  - Blue when underweight
+  - Applies to both the weight trend chart and the entries list, plus a live "Current BMI" stat
 - Daily step count tracking (highlighted green at 10,000+ steps)
 - Food intake tracking with checkboxes:
   - Normal Food
