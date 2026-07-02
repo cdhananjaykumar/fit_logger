@@ -1,4 +1,4 @@
-const CACHE_NAME = "fitlog-cache-v1";
+const CACHE_NAME = "fitlog-cache-v2";
 
 const ASSETS_TO_CACHE = [
     "./",
@@ -33,7 +33,30 @@ self.addEventListener("activate", (event) => {
     self.clients.claim();
 });
 
+// Network-first for page navigations (HTML), so updates show immediately.
+// Cache-first for static assets (JS/CSS/images), for offline speed.
 self.addEventListener("fetch", (event) => {
+
+    const isNavigation =
+        event.request.mode === "navigate" ||
+        (event.request.method === "GET" &&
+         event.request.headers.get("accept") &&
+         event.request.headers.get("accept").includes("text/html"));
+
+    if(isNavigation){
+
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) {
