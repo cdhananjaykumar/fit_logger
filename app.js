@@ -14,6 +14,61 @@ window.onload = function () {
             // offline caching unavailable, app still works online
         });
     }
+
+    const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+    if(isStandalone){
+        const btn = document.getElementById("installBtn");
+        if(btn){
+            btn.classList.add("hidden");
+        }
+    }
+}
+
+
+let deferredInstallPrompt = null;
+
+
+window.addEventListener("beforeinstallprompt", (event) => {
+
+    // Chrome only fires this event when the site fully meets install
+    // criteria (manifest + icons + HTTPS + service worker). If this never
+    // fires, the site isn't yet passing those checks on the live deployment.
+    event.preventDefault();
+    deferredInstallPrompt = event;
+
+    const btn = document.getElementById("installBtn");
+    if(btn){
+        btn.classList.remove("hidden");
+    }
+});
+
+
+window.addEventListener("appinstalled", () => {
+
+    const btn = document.getElementById("installBtn");
+    if(btn){
+        btn.classList.add("hidden");
+    }
+    deferredInstallPrompt = null;
+});
+
+
+function installApp(){
+
+    if(!deferredInstallPrompt){
+        alert("Install isn't available yet in this browser. Make sure you're using Chrome and reload the page.");
+        return;
+    }
+
+    deferredInstallPrompt.prompt();
+
+    deferredInstallPrompt.userChoice.then(() => {
+        deferredInstallPrompt = null;
+        document.getElementById("installBtn").classList.add("hidden");
+    });
 }
 
 
@@ -118,6 +173,44 @@ function getWeightColor(weightKg){
     const category = getBmiCategory(bmi);
 
     return BMI_COLORS[category] || "#43a047";
+}
+
+
+// Healthy weight range for a height, based on standard BMI bands 18.5-24.9
+function getHealthyWeightRange(heightCm){
+
+    if(!heightCm){
+        return null;
+    }
+
+    const heightM = heightCm/100;
+
+    return {
+        min: 18.5 * heightM * heightM,
+        max: 24.9 * heightM * heightM
+    };
+}
+
+
+// Returns { category, diffKg } where diffKg is how many kg above max
+// (if overweight), below min (if underweight), or 0 if within range
+function getWeightDiff(weightKg, heightCm){
+
+    const range = getHealthyWeightRange(heightCm);
+
+    if(!range || !weightKg){
+        return null;
+    }
+
+    if(weightKg > range.max){
+        return { category: "over", diffKg: weightKg - range.max };
+    }
+
+    if(weightKg < range.min){
+        return { category: "under", diffKg: range.min - weightKg };
+    }
+
+    return { category: "normal", diffKg: 0 };
 }
 
 
@@ -341,16 +434,36 @@ function renderStats(logs){
         : "--";
 
     const heightCm = getHeight();
-    let bmiHtml = "<div class='statBox'><span>--</span><small>Current BMI</small></div>";
+    let bmiHtml = "<div class='statBox'><span>--</span><small>vs Healthy Weight</small></div>";
 
     if(lastWeight!==null && heightCm){
-        const bmi = getBmi(lastWeight, heightCm);
-        const category = getBmiCategory(bmi);
-        bmiHtml =
-            "<div class='statBox bmiBox " + category + "'>" +
-                "<span>" + bmi.toFixed(1) + "</span>" +
-                "<small>" + getBmiLabel(category) + "</small>" +
-            "</div>";
+
+        const diff = getWeightDiff(lastWeight, heightCm);
+
+        if(diff){
+
+            let valueLabel;
+
+            if(diff.category==="over"){
+                valueLabel = "+" + diff.diffKg.toFixed(1) + " kg";
+            }else if(diff.category==="under"){
+                valueLabel = "-" + diff.diffKg.toFixed(1) + " kg";
+            }else{
+                valueLabel = "On Track";
+            }
+
+            const smallLabel = diff.category==="over"
+                ? "Over healthy weight"
+                : diff.category==="under"
+                    ? "Under healthy weight"
+                    : "Within healthy range";
+
+            bmiHtml =
+                "<div class='statBox bmiBox " + diff.category + "'>" +
+                    "<span>" + valueLabel + "</span>" +
+                    "<small>" + smallLabel + "</small>" +
+                "</div>";
+        }
     }
 
     statsRow.innerHTML =
